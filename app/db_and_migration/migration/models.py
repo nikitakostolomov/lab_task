@@ -20,23 +20,21 @@ class BaseModel(pw.Model):
 
     class Meta:
         database = db
-        order_by = "id"
 
 
 class Author(BaseModel):
     """
     Модель автор. Наследуется от базовой модели.
-    Описывает таблицу авторов, в которой будут указаны имя автора и внешний ключ, ссылающийся на таблицу книг.
+    Описывает таблицу авторов, в которой будет указано имя автора.
     Имя автора будет проиндексировано.
 
     name: имя автора, строка
-    book_id: внешний ключ, ссылающийся на таблицу книг
 
     class Meta:
         db_table: название таблицы, которе будет использоваться в бд
     """
-    name = pw.CharField(index=True)
-    book_id = pw.DeferredForeignKey("Book")
+
+    name = pw.CharField(index=True, null=True)
 
     class Meta:
         db_table = "authors"
@@ -55,10 +53,11 @@ class Book(BaseModel):
 
     class Meta:
         db_table: название таблицы, которе будет использоваться в бд
-        """
-    author_id = pw.ForeignKeyField(Author)
+    """
+
+    author_id = pw.ForeignKeyField(Author, null=True)
     title = pw.CharField(index=True)
-    year = pw.IntegerField(index=True)
+    year = pw.IntegerField(index=True, null=True)
 
     class Meta:
         db_table = "books"
@@ -66,4 +65,5 @@ class Book(BaseModel):
 
 if __name__ == "__main__":
     with db:
+        db.drop_tables([Author, Book])
         db.create_tables([Author, Book])
