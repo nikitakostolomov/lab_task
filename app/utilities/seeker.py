@@ -1,5 +1,5 @@
 import click
-
+import peewee as pw
 import db_and_migration.migration.models as md
 
 
@@ -38,7 +38,7 @@ def seeker(author, book_name, year, identifier):
             book_where.append(md.Book.year == year)
 
         if book_where or author_where:
-            query = md.Book.select().join(md.Author).where(*author_where, *book_where)
+            query = md.Book.select().join(md.Author, pw.JOIN.LEFT_OUTER).where(*author_where, *book_where)
         else:
             query = md.Book.select().join(md.Author)
 
@@ -46,7 +46,8 @@ def seeker(author, book_name, year, identifier):
         if identifier:
             print(row.id)
         else:
-            print(row.author_id.name, row.title, row.year)
+            name = row.author_id.name if row.author_id is not None else None
+            print(name, row.title, row.year)
 
 
 if __name__ == "__main__":

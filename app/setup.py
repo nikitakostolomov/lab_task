@@ -9,6 +9,7 @@ setup(
         "console_scripts": [
             "digger=utilities.digger:digger",
             "seeker=utilities.seeker:seeker",
+            "wiper=utilities.wiper:wiper",
         ],
     },
 )
