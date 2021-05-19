@@ -6,6 +6,9 @@ setup(
     packages=find_packages(),
     install_requires=["click", "peewee"],
     entry_points={
-        "console_scripts": ["digger=utilities.digger:digger"],
+        "console_scripts": [
+            "digger=utilities.digger:digger",
+            "seeker=utilities.seeker:seeker",
+        ],
     },
 )
