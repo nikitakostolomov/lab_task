@@ -40,21 +40,20 @@ def seeker(author, book_name, year, identifier):
     Функция для поиска книг по их автору, названию или году выпуска. Если опциональные параметры не указаны, то
     будет выведена вся информация.
     """
-    book_where = []
-    author_where = []
+    where_expr = []
     with md.db:
         if author:
-            author_where.append(md.Author.name == author)
+            where_expr.append(md.Author.name == author)
         if book_name:
-            book_where.append(md.Book.title == book_name)
+            where_expr.append(md.Book.title == book_name)
         if year:
-            book_where.append(md.Book.year == year)
+            where_expr.append(md.Book.year == year)
 
-        if book_where or author_where:
+        if where_expr:
             query = (
                 md.Book.select()
                 .join(md.Author, pw.JOIN.LEFT_OUTER)
-                .where(*author_where, *book_where)
+                .where(*where_expr)
             )
         else:
             query = md.Book.select().join(md.Author, pw.JOIN.LEFT_OUTER)
