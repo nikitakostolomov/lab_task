@@ -1,6 +1,8 @@
 import peewee as pw
 
-db = pw.SqliteDatabase("db_and_migration/database/main.db")
+from connection import connection
+
+db = connection
 
 
 class BaseModel(pw.Model):
@@ -59,11 +61,10 @@ class Book(BaseModel):
     title = pw.CharField(index=True)
     year = pw.IntegerField(index=True, null=True)
 
+    language = pw.CharField(null=True)
+    program_used = pw.CharField(null=True)
+    src_url = pw.CharField(null=True)
+    version = pw.CharField(null=True)
+
     class Meta:
         db_table = "books"
-
-
-if __name__ == "__main__":
-    with db:
-        db.drop_tables([Author, Book])
-        db.create_tables([Author, Book])

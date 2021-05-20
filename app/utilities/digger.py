@@ -19,9 +19,10 @@ def get_attribute(
     :return: атрибут или пустая строка, если атрибут не найден
     """
     start_pos_attr = row_slice.find(start_attribute)
-    if start_pos_attr != -1:
+    end_pos_attr = row_slice.find(end_attribute)
+    if start_pos_attr != -1 and end_pos_attr != -1:
         start_pos_attr += len(start_attribute)
-        end_pos_attr = row_slice.find(end_attribute)
+        end_pos_attr = end_pos_attr
         return row_slice[start_pos_attr:end_pos_attr]
     else:
         return ""
@@ -35,46 +36,58 @@ def find_info(row: str) -> list:
     :return: список с информацией об атрибутах
     """
     info_list = []
+    title = get_attribute(row, "<book-title>", "</book-title>")
 
-    author_slice = get_attribute(
-        row, "<author>", "</author>"
-    )  # находим все, что заключено между тегами автора
-    first_name = get_attribute(
-        author_slice, "<first-name>", "</first-name>"
-    )  # ищем имя в тегах автора
-    middle_name = get_attribute(
-        author_slice, "<middle-name>", "</middle-name>"
-    )  # ищем отчество в тегах автора
-    last_name = get_attribute(
-        author_slice, "<last-name>", "</last-name>"
-    )  # ищем фамилию в тегах автора
-    full_name = f"{first_name} {middle_name} {last_name}"
+    if title:
+        author_slice = get_attribute(
+            row, "<author>", "</author>"
+        )  # находим все, что заключено между тегами автора
+        first_name = get_attribute(
+            author_slice, "<first-name>", "</first-name>"
+        )  # ищем имя в тегах автора
+        middle_name = get_attribute(
+            author_slice, "<middle-name>", "</middle-name>"
+        )  # ищем отчество в тегах автора
+        last_name = get_attribute(
+            author_slice, "<last-name>", "</last-name>"
+        )  # ищем фамилию в тегах автора
+        full_name = f"{first_name} {middle_name} {last_name}"
 
-    if full_name.isspace():
-        info_list.append("")
-    else:
-        info_list.append(full_name.replace("  ", " "))
+        if full_name.isspace():
+            info_list.append(None)
+        else:
+            info_list.append(full_name.strip().replace("  ", " "))
 
-    info_list.append(get_attribute(row, "<book-title>", "</book-title>"))
+        info_list.append(title)
 
-    year = get_attribute(row, "<year>", "</year>")
-    if year:
-        info_list.append(int(get_attribute(row, "<year>", "</year>")))
-    else:
-        info_list.append(0)
+        year = get_attribute(row, "<year>", "</year>")
+        info_list.append(check_attr_for_none(year, int))
+
+        language = get_attribute(row, "<lang>", "</lang>")
+        info_list.append(check_attr_for_none(language, str))
+
+        program_used = get_attribute(row, "<program-used>", "</program-used>")
+        info_list.append(check_attr_for_none(program_used, str))
+
+        src_url = get_attribute(row, "<src-url>", "</src-url>")
+        info_list.append(check_attr_for_none(src_url, str))
+
+        version = get_attribute(row, "<version>", "</version>")
+        info_list.append(check_attr_for_none(version, str))
 
     return info_list
 
 
-def check_none(attribute: str or int) -> str or int or None:
+def check_attr_for_none(attribute: str or int, attr_type: type) -> str or int or None:
     """
-    Проверяет, есть ли информация об авторе, книге или годе выпуска. Если есть, то возвращает этот атрибут, если нет,
-    то возвращает None.
-    :param attribute: книга, автор или год
-    :return: атрибут или None
+    Функция для проверки есть ли переданный атрибут, если есть то возврщает его, обернув в переданный тип, если нет,
+    то вернет None.
+    :param attribute: атрибут для проверки
+    :param attr_type: тип, в который нужно обернуть атрибут
+    :return: атрибут обернутый в указанный тип или None, если атрибут является False
     """
     if attribute:
-        return attribute
+        return attr_type(attribute)
     else:
         return None
 
@@ -90,12 +103,15 @@ def read_rows(book) -> str:
     book_text = ""
     count_rows = 0
     while True:
-        row = book.readline().strip()
+        try:
+            row = book.readline().strip()
+        except UnicodeDecodeError:
+            row = ""
         if type(row) is bytes:
             row = row.decode("utf8")
         book_text += row + " "
         count_rows += 1
-        if row.find("<title>") != -1 or count_rows == 15:
+        if row.find("<title>") != -1 or count_rows == 100:
             break
 
     return book_text
@@ -108,9 +124,10 @@ def add_data_to_db(data: str, update: bool) -> None:
     :param data: инофрмация в виде строки
     :param update: флаг для функций add_data_to_books и add_data_to_authors
     """
-    author, title, year = find_info(data)
-    add_data_to_authors(author)
-    add_data_to_books(author, title, check_none(year), update)
+    info_list = find_info(data)
+    if info_list:
+        add_data_to_authors(info_list[0])
+        add_data_to_books(info_list, update)
 
 
 def parse_fb2(path_to_book: str, update: bool) -> None:
@@ -204,31 +221,39 @@ def add_data_to_authors(authors_name: str) -> None:
     :param authors_name: имя автора или пустая строка, если автора нет
     """
     with md.db:
-        if check_none(authors_name):
+        if authors_name:
             md.Author.get_or_create(name=authors_name)
 
 
-def add_data_to_books(author: str, book_title: str, year: int, update: bool) -> None:
+def add_data_to_books(info_list: list, update: bool) -> None:
     """
     Добавляет в таблицу книг информацию об авторе, названии и годе выпуска. Если информации об авторе или годе нет в
     тегах книги, то на их местах в таблице будет стоять null.
     Если название книги уже есть в таблице, действуем в зависимости от флага update.
-    :param author: имя автора или пустая строка, если автора нет
-    :param book_title: название книги
-    :param year: год или 0, если года нет
+    :param info_list: список из автора, названия книги, года выпуска, языка, использованной программы, ссылки и
+    версии
     :param update: флаг, если True, то обновляем информацию по уже имеющейся книге в таблице, если False, ничего
     не делаем
     """
+    get_list = ["author_id", "title", "year"]
+    update_list = ["language", "program_used", "src_url", "version"]
     with md.db:
-        author_id = md.Author.select().where(md.Author.name == author)
+        author_id = md.Author.select().where(md.Author.name == info_list[0])
+        get_list_attrs = list(author_id)
+
+        if not get_list_attrs:
+            get_list_attrs = [None]
+        get_list_attrs.extend(info_list[1:3])
+
+        get_keywords = dict(zip(get_list, get_list_attrs))
+        update_keywords = dict(zip(update_list, info_list[3:]))
+
         try:
-            book_id = md.Book.get(title=book_title).id
+            book_id = md.Book.get(**get_keywords).id
             if update:
-                md.Book.update(author_id=author_id, title=book_title, year=year).where(
-                    md.Book.id == book_id
-                ).execute()
+                md.Book.update(**update_keywords).where(md.Book.id == book_id).execute()
         except pw.DoesNotExist:
-            md.Book.insert(author_id=author_id, title=book_title, year=year).execute()
+            md.Book.insert(**get_keywords, **update_keywords).execute()
 
 
 def check_directory_or_file(path: str) -> bool:
@@ -242,6 +267,7 @@ def check_directory_or_file(path: str) -> bool:
         return True
     else:
         print(f"Директории {path} не существует")
+        return False
 
 
 @click.command()
