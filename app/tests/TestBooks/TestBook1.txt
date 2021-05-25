@@ -1,0 +1,3 @@
+<author><first-name>Александр</first-name><last-name>Бакулин</last-name><id>e05b60e0-31fc-43dd-be60-a18f3f3a5256</id></author>
+<book-title>Гравитация и эфир</book-title>
+<title>
