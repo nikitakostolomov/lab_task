@@ -5,12 +5,11 @@ from tabulate import tabulate
 import db_and_migration.migration.models as md
 
 
-def make_table(table, headers):
+def make_table(table: list, headers: list) -> None:
     """
     Функция для создания таблиц
-    :param table:
-    :param headers:
-    :return:
+    :param table: подготовленный формат таблицы
+    :param headers: загаловки таблицы
     """
     print(tabulate(table, headers=headers, tablefmt="github"))
 
